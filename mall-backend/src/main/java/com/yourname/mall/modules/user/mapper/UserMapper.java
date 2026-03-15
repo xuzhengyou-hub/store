@@ -45,11 +45,55 @@ public class UserMapper {
         return users.isEmpty() ? null : users.get(0);
     }
 
+    public User findByPhone(String phone) {
+        List<User> users = jdbcTemplate.query(
+            "SELECT id, username, password, phone, nickname, avatar, status " +
+                "FROM ums_user WHERE phone = ? AND is_deleted = 0 LIMIT 1",
+            USER_ROW_MAPPER,
+            phone
+        );
+        return users.isEmpty() ? null : users.get(0);
+    }
+
+    public User findById(Long id) {
+        List<User> users = jdbcTemplate.query(
+            "SELECT id, username, password, phone, nickname, avatar, status " +
+                "FROM ums_user WHERE id = ? AND is_deleted = 0 LIMIT 1",
+            USER_ROW_MAPPER,
+            id
+        );
+        return users.isEmpty() ? null : users.get(0);
+    }
+
     public int insertUser(String username, String encodedPassword) {
         return jdbcTemplate.update(
             "INSERT INTO ums_user (username, password, status, is_deleted) VALUES (?, ?, 1, 0)",
             username,
             encodedPassword
+        );
+    }
+
+    public int updateNickname(Long userId, String nickname) {
+        return jdbcTemplate.update(
+            "UPDATE ums_user SET nickname = ? WHERE id = ? AND is_deleted = 0",
+            nickname,
+            userId
+        );
+    }
+
+    public int updateAvatar(Long userId, String avatar) {
+        return jdbcTemplate.update(
+            "UPDATE ums_user SET avatar = ? WHERE id = ? AND is_deleted = 0",
+            avatar,
+            userId
+        );
+    }
+
+    public int updatePhone(Long userId, String phone) {
+        return jdbcTemplate.update(
+            "UPDATE ums_user SET phone = ? WHERE id = ? AND is_deleted = 0",
+            phone,
+            userId
         );
     }
 }

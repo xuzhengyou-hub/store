@@ -1,0 +1,14 @@
+package com.yourname.mall.modules.user.dto;
+
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class DeleteBatchAddressRequest {
+
+    @NotEmpty(message = "ids不能为空")
+    private List<Long> ids;
+}
+

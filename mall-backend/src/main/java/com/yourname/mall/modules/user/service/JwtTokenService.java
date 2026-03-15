@@ -3,6 +3,7 @@ package com.yourname.mall.modules.user.service;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SecurityException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -34,5 +35,19 @@ public class JwtTokenService {
             .expiration(Date.from(now.plusSeconds(expireSeconds)))
             .signWith(secretKey, SignatureAlgorithm.HS256)
             .compact();
+    }
+
+    public Long parseUserId(String token) {
+        try {
+            String subject = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+            return Long.parseLong(subject);
+        } catch (SecurityException | IllegalArgumentException ex) {
+            throw new IllegalArgumentException("无效的登录令牌");
+        }
     }
 }

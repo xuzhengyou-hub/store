@@ -126,3 +126,90 @@ CREATE TABLE `oms_order_item` (
   KEY `idx_order_id` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单商品明细快照表';
 ```
+
+
+
+### 4. 用户的收货地址表 (`ums_user_address`) - 🚨 下单必备
+
+**为什么需要它？** 之前的主订单表里虽然有收货地址字段，但那是用户下单时的**“数据快照”**。用户平时需要在个人中心管理多个地址（家里、公司），下单时直接勾选。
+
+SQL
+
+```sql
+CREATE TABLE `ums_user_address` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL COMMENT '所属用户ID',
+  `receiver_name` varchar(64) NOT NULL COMMENT '收货人姓名',
+  `receiver_phone` varchar(32) NOT NULL COMMENT '收货人电话',
+  `province` varchar(64) DEFAULT NULL COMMENT '省份',
+  `city` varchar(64) DEFAULT NULL COMMENT '城市',
+  `detail_address` varchar(255) NOT NULL COMMENT '详细地址(街道、门牌号)',
+  `is_default` tinyint(1) DEFAULT '0' COMMENT '是否默认地址: 0->否; 1->是',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收货地址表';
+```
+
+### 5. 购物车表 (`oms_cart_item`) - 🛒 提升体验必备
+
+**为什么需要它？** 很多架构师喜欢把购物车数据完全放在 Redis 里（速度极快）。但对于新手或小型商城，**强烈建议在 MySQL 里建一张购物车表作为持久化备份**。这样用户在手机上加了购物车，换到电脑上登录，购物车里的东西还在。
+
+SQL
+
+```sql
+CREATE TABLE `oms_cart_item` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `spu_id` bigint(20) NOT NULL COMMENT '商品SPU_ID',
+  `sku_id` bigint(20) NOT NULL COMMENT '商品SKU_ID',
+  `quantity` int(11) NOT NULL DEFAULT '1' COMMENT '购买数量',
+  `price` decimal(10,2) NOT NULL COMMENT '加入购物车时的价格(用于比价提醒)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车明细表';
+```
+
+### 6. 商品分类表 (`pms_category`) - 🗂️ 浏览导航必备
+
+**为什么需要它？** 你的商城总不能把所有商品大杂烩一样全堆在首页吧？你需要“手机数码”、“男装女装”这样的分类目录。通常这是一个**无限极分类（树形结构）**的表。
+
+SQL
+
+```sql
+CREATE TABLE `pms_category` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `parent_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '上级分类的编号: 0表示一级分类',
+  `name` varchar(64) NOT NULL COMMENT '分类名称',
+  `level` tinyint(4) NOT NULL DEFAULT '1' COMMENT '分类级别: 1->一级; 2->二级',
+  `sort` int(11) DEFAULT '0' COMMENT '排序字段(数字越大越靠前)',
+  `icon` varchar(255) DEFAULT NULL COMMENT '分类图标URL',
+  `show_status` tinyint(1) DEFAULT '1' COMMENT '是否显示: 0->不显示; 1->显示',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品分类表';
+```
+
+*(注：建好这个表后，你需要回头在 `pms_spu` 表里加一个 `category_id` 字段，把商品挂载到对应的分类下。)*
+
+### 7. 支付流水表 (`oms_payment_info`) - 💰 财务对账必备（可选但强烈推荐）
+
+**为什么需要它？** 订单表 (`oms_order`) 记录的是“业务状态”，而支付表记录的是“钱的轨迹”。当用户用微信支付成功后，微信服务器会回调你的 Spring Boot 接口，你需要把微信的**第三方交易流水号**记录下来，方便以后查账或退款。
+
+SQL
+
+```sql
+CREATE TABLE `oms_payment_info` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `order_sn` varchar(64) NOT NULL COMMENT '关联的订单号',
+  `user_id` bigint(20) NOT NULL COMMENT '支付用户ID',
+  `pay_type` tinyint(1) DEFAULT NULL COMMENT '支付方式: 1->微信; 2->支付宝',
+  `trade_no` varchar(128) DEFAULT NULL COMMENT '第三方支付平台交易流水号(极度重要)',
+  `total_amount` decimal(10,2) NOT NULL COMMENT '实际支付金额',
+  `payment_status` tinyint(1) DEFAULT '0' COMMENT '支付状态: 0->未支付; 1->已支付; 2->支付失败',
+  `callback_time` datetime DEFAULT NULL COMMENT '第三方回调时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_order_sn` (`order_sn`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付流水记录表';
+```
